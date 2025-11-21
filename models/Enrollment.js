@@ -1,4 +1,4 @@
-import mongoose from "mongoose";
+const mongoose = require('mongoose');
 const enrollmentSchema = new mongoose.Schema(
   {
     studentId: {
@@ -21,5 +21,4 @@ const enrollmentSchema = new mongoose.Schema(
 
 // UNIQUE → student cannot enroll same course twice
 enrollmentSchema.index({ studentId: 1, courseId: 1 }, { unique: true });
-
-export default mongoose.model("Enrollment", enrollmentSchema);
+module.exports= mongoose.model("Enrollment", enrollmentSchema);

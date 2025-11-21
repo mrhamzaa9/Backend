@@ -1,24 +1,33 @@
-const express = require('express');
+const express = require("express");
 const mongoose = require("./db/connection");
-const app = express();
 const cors = require("cors");
+const Authapi = require("./routes/Auth");
 const bodyParser = require("body-parser");
 const cookieParser = require("cookie-parser");
-require("dotenv").config(); 
-app.use(cors({
-  origin: true,
-  credentials: true,
-}));
+require("dotenv").config();
 
-const PORT = process.env.PORT
 
-// middleware for using to converter the data into json format
-app.use(express.json())
-app.use(cookieParser()); 
-// app.use(cors())
+
+const app = express();
+app.use(express.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
-// Start the server
+const PORT = process.env.PORT;
+
+// Middlewares
+app.use(
+  cors({
+   credentials: true,
+  })
+);
+
+app.use(cookieParser());
+
+
+// Routes
+app.use("/api/auth", Authapi);
+
+// Start server
 app.listen(PORT, () => {
-    console.log(`Express server running at http://localhost:${PORT}`);
+  console.log(`Server running at http://localhost:${PORT}`);
 });

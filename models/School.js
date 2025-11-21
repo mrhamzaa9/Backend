@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const schoolSchema = new mongoose.Schema({
     name: {
         type: String,
@@ -13,4 +14,4 @@ const schoolSchema = new mongoose.Schema({
 },
     { timestamps: true });
 
-export default mongoose.model("School", schoolSchema);
+module.exports=  mongoose.model("School", schoolSchema);
