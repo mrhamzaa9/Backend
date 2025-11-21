@@ -1,12 +1,13 @@
 const schoolSchema = new mongoose.Schema({
     name: {
         type: String,
-        required: true
+        required: true,
+        trim: true,
     },
     // only  superAdmin
     createdBy: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "User", 
+        ref: "User",
         required: true
     }
 },

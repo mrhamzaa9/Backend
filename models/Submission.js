@@ -1,5 +1,4 @@
 import mongoose from "mongoose";
-
 const submissionSchema = new mongoose.Schema(
   {
     assignmentId: {
@@ -13,7 +12,6 @@ const submissionSchema = new mongoose.Schema(
       ref: "User",
       required: true
     },
-
     fileUrl: {
       type: String,
       required: true
@@ -28,11 +26,6 @@ const submissionSchema = new mongoose.Schema(
       type: Number,
       default: null
     },
-
-    feedback: {
-      type: String,
-      default: null
-    }
   },
   { timestamps: true }
 );
