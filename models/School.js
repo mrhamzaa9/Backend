@@ -5,6 +5,11 @@ const schoolSchema = new mongoose.Schema({
         required: true,
         trim: true,
     },
+    address: {
+        type: String,
+        required: true,
+        trim: true,
+    },
     // only  superAdmin
     createdBy: {
         type: mongoose.Schema.Types.ObjectId,
@@ -14,4 +19,4 @@ const schoolSchema = new mongoose.Schema({
 },
     { timestamps: true });
 
-module.exports=  mongoose.model("School", schoolSchema);
+module.exports = mongoose.model("School", schoolSchema);
