@@ -3,6 +3,9 @@ const School = require("../models/school");
 const GetSchool = async (req, res) => {
     try {
         const school = await School.find()
+            .populate("createdBy", "name email role")
+            .populate("teachers", "name email")
+            .populate("students", "name email")
         res.status(200).json(school)
     }
     catch (error) {
@@ -10,18 +13,18 @@ const GetSchool = async (req, res) => {
     }
 }
 const DeleteSchool = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const DeleteSchool = await School.findByIdAndDelete(id);
+    try {
+        const { id } = req.params;
+        const DeleteSchool = await School.findByIdAndDelete(id);
 
-    if (!DeleteSchool) {
-      return res.status(404).json({ message: "User not found" });
+        if (!DeleteSchool) {
+            return res.status(404).json({ message: "School not found" });
+        }
+
+        return res.status(200).json({ message: "School removed successfully", DeleteSchool });
+    } catch (error) {
+        console.error("Delete error:", error);
+        return res.status(500).json({ error: "Internal Server Error" });
     }
-
-    return res.status(200).json({ message: "User removed successfully", DeleteSchool });
-  } catch (error) {
-    console.error("Delete error:", error);
-    return res.status(500).json({ error: "Internal Server Error" });
-  }
 };
-module.exports={GetSchool,DeleteSchool}
+module.exports = { GetSchool, DeleteSchool }

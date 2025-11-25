@@ -119,4 +119,14 @@ const selectSchool = async (req, res) => {
         res.status(500).json({ message: err.message });
     }
 }
-module.exports = { AddSchool , selectSchool,approveTeacher,requestToJoinSchool}
+// view all school for student and teacher
+ const getSchool = async (req, res) => {
+     try {
+         const school = await School.find()
+         res.status(200).json(school)
+     }
+     catch (error) {
+         return res.status(500).json({ error: "Internal Server Error" });
+     }
+ }
+module.exports = { AddSchool ,getSchool, selectSchool,approveTeacher,requestToJoinSchool}
