@@ -2,7 +2,8 @@ const express = require("express");
 const mongoose = require("./db/connection");
 const cors = require("cors");
 const Authapi = require("./routes/auth");
-const Schoolapi = require("./routes/superadmin");
+const Superadminapi = require("./routes/superadmin");
+const Schoolapi = require('./routes/school')
 const bodyParser = require("body-parser");
 const cookieParser = require("cookie-parser");
 require("dotenv").config();
@@ -27,7 +28,8 @@ app.use(cookieParser());
 
 // Routes
 app.use("/api/auth", Authapi);
-app.use("/api/superadmin", Schoolapi);
+app.use("/api/school", Schoolapi);
+app.use("/api/superadmin", Superadminapi);
 
 // Start server
 app.listen(PORT, () => {

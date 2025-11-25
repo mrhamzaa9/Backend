@@ -1,34 +1,37 @@
 const mongoose = require('mongoose');
+
 const assignmentSchema = new mongoose.Schema(
   {
     task: {
       type: String,
       required: true,
-      trim: true
+      trim: true,
     },
-    Discription: {
+
+    description: {
       type: String,
       required: true,
-      trim: true
+      trim: true,
     },
-    FinalAt: {
+
+    finalAt: {
       type: Date,
       required: true,
     },
+
     courseId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Course",
-      required: true
+      required: true,
     },
-    //    only teacher by
+
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      required: true
-    }
-
+      required: true,
+    },
   },
   { timestamps: true }
 );
 
-module.exports=  mongoose.model("Assignment", assignmentSchema);
+module.exports = mongoose.model("Assignment", assignmentSchema);

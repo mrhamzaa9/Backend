@@ -6,7 +6,7 @@ require("dotenv").config();
 const secretKey = process.env.SECRET_KEY;
 const register = async (req, res) => {
     try {
-        const { name, email, password, role, schoolId } = req.body
+        const { name, email, password, role } = req.body
         if (!name || !email || !password || !role) {
             return res.status(400).json({ error: "All fields are required" });
         }
@@ -29,7 +29,7 @@ const register = async (req, res) => {
             email: normalizedEmail,
             password: hashedPassword,
             role: cleanRole,
-            schoolId: role === "superAdmin" ? null : schoolId || null,
+      
         });
         await user.save();
         return res.status(201).json({
@@ -54,6 +54,7 @@ const login = async (req, res) => {
         if (!match) {
             res.status(401).json({ message: "WRONG PASSWORD" })
         }
+        
         //  assign token
         const token = jwt.sign({ id: user._id, role: user.role, email: user.email }, secretKey, { expiresIn: "20h" });
         res.cookie("token", token);

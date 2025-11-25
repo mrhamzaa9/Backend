@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const validator = require('validator');
+
 const userSchema = new mongoose.Schema(
   {
     name: {
@@ -7,41 +8,42 @@ const userSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
+
     email: {
       type: String,
       required: true,
       unique: true,
       trim: true,
+      lowercase: true,
       validate: {
         validator: function (v) {
-          // Check if it's a valid email format AND specifically a Gmail domain
           return validator.isEmail(v) && v.endsWith('@gmail.com');
         },
-        message: props => `${props.value} is not a valid Gmail address!`
+        message: props => `${props.value} is not a valid Gmail address!`,
       },
-
-      lowercase: true
     },
+
     password: {
       type: String,
+      required: true,
       trim: true,
-      required: true
     },
 
     role: {
       type: String,
-      enum: ["superAdmin", "schoolAdmin", "teacher", "student"],
-      required: true
+      enum: ["superadmin", "schooladmin", "teacher", "student"],
+      required: true,
     },
 
-    schoolId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "School",
-      default: null
-    },
+    // IMPORTANT: teacher/student can join many schools
+    schools: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "School",
+      }
+    ],
   },
   { timestamps: true }
 );
 
-module.exports= mongoose.model("User", userSchema);
- 
+module.exports = mongoose.model("User", userSchema);
