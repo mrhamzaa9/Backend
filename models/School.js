@@ -1,22 +1,59 @@
 const mongoose = require('mongoose');
-const schoolSchema = new mongoose.Schema({
+
+const schoolSchema = new mongoose.Schema(
+  {
     name: {
-        type: String,
-        required: true,
-        trim: true,
+      type: String,
+      required: true,
+      trim: true,
     },
+
     address: {
-        type: String,
-        required: true,
-        trim: true,
+      type: String,
+      required: true,
+      trim: true,
     },
-    // only  superAdmin
+
+    // SchoolAdmin who created this school
     createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+
+    // Teachers approved to teach
+    teachers: [
+      {
         type: mongoose.Schema.Types.ObjectId,
         ref: "User",
-        required: true
-    }
-},
-    { timestamps: true });
+      }
+    ],
+
+    // Students who selected this school
+    students: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      }
+    ],
+
+    // Join requests from teachers
+    pendingTeachers: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      }
+    ],
+
+    // All courses in the school
+    courses: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Course",
+      }
+    ],
+  },
+  { timestamps: true }
+);
 
 module.exports = mongoose.model("School", schoolSchema);

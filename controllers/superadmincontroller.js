@@ -24,4 +24,4 @@ const DeleteSchool = async (req, res) => {
     return res.status(500).json({ error: "Internal Server Error" });
   }
 };
-module.exports={GetSchool,AddSchool,DeleteSchool}
+module.exports={GetSchool,DeleteSchool}
