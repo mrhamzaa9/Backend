@@ -48,17 +48,17 @@ const login = async (req, res) => {
         const user = await User.findOne({ email: normalizedEmail });
 
         if (!user) {
-            res.status(404).json({ message: "EMAIL NOT REGISTER" })
+              return  res.status(404).json({ message: "EMAIL NOT REGISTER" })
         }
         const match = await bcrypt.compare(password, user.password)
         if (!match) {
-            res.status(401).json({ message: "WRONG PASSWORD" })
+              return  res.status(401).json({ message: "WRONG PASSWORD" })
         }
         
         //  assign token
         const token = jwt.sign({ id: user._id, role: user.role, email: user.email }, secretKey, { expiresIn: "20h" });
         res.cookie("token", token);
-        res.json({ token, user: { id: user._id, name: user.name, role: user.role, schoolId: user.schoolId } });
+           return res.json( user );
     }
     catch (error) {
         return res.status(500).json({ error: "Internal Server Error" });

@@ -1,7 +1,7 @@
 const School = require("../models/school");
 const AddSchool = async (req, res) => {
     try {
-        console.log("req.user", req.user);
+    
         const { name, address } = req.body
         if (!name || !address) {
             return res.status(400).json({ error: "All fields are required" });
@@ -11,7 +11,7 @@ const AddSchool = async (req, res) => {
         if (existingSchool) {
             return res
                 .status(400)
-                .json({ error: "You already have a registered school with this account" });
+                .json({ message: "You already have a registered school with this account" });
         }
 
         const school = new School({

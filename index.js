@@ -1,9 +1,12 @@
 const express = require("express");
 const mongoose = require("./db/connection");
 const cors = require("cors");
-const Authapi = require("./routes/auth");
+const Authapi = require("./routes/Auth");
 const Superadminapi = require("./routes/superadmin");
 const Schoolapi = require('./routes/school')
+const Courseapi = require("./routes/course");
+const Enrollmentapi = require("./routes/enrollment");
+const Assignmentapi = require('./routes/assignment')
 const bodyParser = require("body-parser");
 const cookieParser = require("cookie-parser");
 require("dotenv").config();
@@ -19,6 +22,7 @@ const PORT = process.env.PORT;
 // Middlewares
 app.use(
   cors({
+    origin:true,
    credentials: true,
   })
 );
@@ -30,6 +34,10 @@ app.use(cookieParser());
 app.use("/api/auth", Authapi);
 app.use("/api/school", Schoolapi);
 app.use("/api/superadmin", Superadminapi);
+app.use("/api/course", Courseapi);
+app.use("/api/enroll", Enrollmentapi);
+app.use("/api/assign", Assignmentapi);
+
 
 // Start server
 app.listen(PORT, () => {

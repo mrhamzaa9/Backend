@@ -15,12 +15,7 @@ const userSchema = new mongoose.Schema(
       unique: true,
       trim: true,
       lowercase: true,
-      validate: {
-        validator: function (v) {
-          return validator.isEmail(v) && v.endsWith('@gmail.com');
-        },
-        message: props => `${props.value} is not a valid Gmail address!`,
-      },
+      validate: [ validator.isEmail,"please enter a valid email"]
     },
 
     password: {

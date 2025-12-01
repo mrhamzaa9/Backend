@@ -1,4 +1,5 @@
 const School = require("../models/school");
+const User = require("../models/user");
 
 const GetSchool = async (req, res) => {
     try {
@@ -15,7 +16,7 @@ const GetSchool = async (req, res) => {
 const DeleteSchool = async (req, res) => {
     try {
         const { id } = req.params;
-        const DeleteSchool = await School.findByIdAndDelete(id);
+        const DeleteSchool = await  School.findByIdAndDelete(id);
 
         if (!DeleteSchool) {
             return res.status(404).json({ message: "School not found" });
@@ -26,5 +27,6 @@ const DeleteSchool = async (req, res) => {
         console.error("Delete error:", error);
         return res.status(500).json({ error: "Internal Server Error" });
     }
-};
-module.exports = { GetSchool, DeleteSchool }
+}
+   ;
+module.exports = { GetSchool, DeleteSchool}
