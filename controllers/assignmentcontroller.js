@@ -42,6 +42,7 @@ const submitAssignment = async (req, res) => {
 
     return res.json({ message: "Submitted", submission });
   } catch (err) {
+    console.log(err);
     return res.status(500).json({ error: "Internal Server Error" });
   }
 };

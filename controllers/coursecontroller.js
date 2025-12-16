@@ -5,31 +5,33 @@ const User = require("../models/user");
 // CREATE COURSE ( SchoolAdmin)
 const createCourse = async (req, res) => {
   try {
-    const { name, schoolId } = req.body;
+    const { name } = req.body;
 
-    if (!name || !schoolId) {
-      return res.status(400).json({ message: "Name & schoolId are required" });
+    if (!name) {
+      return res.status(400).json({ message: "Course name is required" });
     }
 
-    // Verify school exists
-    const school = await School.findById(schoolId);
-    if (!school) return res.status(404).json({ message: "School not found" });
+    // Only School Admin can create course
+    if (req.user.role !== "schooladmin") {
+      return res.status(403).json({ message: "Only School Admin can create courses" });
+    }
 
-    // Only teachers approved in this school can create course
-    if (req.user.role === "teacher" && !school.teachers.includes(req.user._id)) {
-      return res
-        .status(403)
-        .json({ message: "You are not approved teacher of this school" });
+    // Find school where this admin is the owner
+    const school = await School.findOne({ createdBy: req.user._id });
+
+    if (!school) {
+      return res.status(404).json({ message: "School not found for this admin" });
     }
 
     // Create course
     const course = await Course.create({
       name,
-      schoolId,
-      teachers: [req.user._id],
+      schoolId: school._id,
+      createdBy: req.user._id,
+      teachers: [],
     });
 
-    // Add course to school
+    // Push course to school
     school.courses.push(course._id);
     await school.save();
 
@@ -40,33 +42,7 @@ const createCourse = async (req, res) => {
   }
 };
 
-// ASSIGN TEACHER TO COURSE (school admin)
-const assignTeacher = async (req, res) => {
-  try {
-    const { courseId, teacherId } = req.body;
 
-    const course = await Course.findById(courseId);
-    if (!course) return res.status(404).json({ message: "Course not found" });
-
-    const teacher = await User.findById(teacherId);
-    if (!teacher) return res.status(404).json({ message: "Teacher not found" });
-
-    // Only teacher role can be assigned
-    if (teacher.role !== "teacher") {
-      return res.status(400).json({ message: "User is not a teacher" });
-    }
-
-    // Add teacher to course
-    if (!course.teachers.includes(teacherId)) {
-      course.teachers.push(teacherId);
-      await course.save();
-    }
-  
-    return res.json({ message: "Teacher assigned to course", course });
-  } catch (err) {
-    return res.status(500).json({ error: "Internal Server Error" });
-  }
-};
 
 // GET ALL COURSES OF A SCHOOL
 const getSchoolCourses = async (req, res) => {
@@ -84,15 +60,20 @@ const getSchoolCourses = async (req, res) => {
   }
 };
 
-// GET COURSES FOR A TEACHER
-const getTeacherCourses = async (req, res) => {
+// GET COURSES FOR A TEACHER WITH SCHOOL INFO
+const getTeacherCoursesWithSchool = async (req, res) => {
   try {
-    const courses = await Course.find({ teachers: req.user._id });
+    const courses = await Course.find({ teachers: req.user._id }).populate(
+      "schoolId",
+      "name address" // add fields you want to show about the school
+    );
+
     return res.json(courses);
   } catch (err) {
     return res.status(500).json({ error: "Internal server error" });
   }
 };
+
 
 // GET COURSES FOR STUDENT (in selected school)
 const getStudentCourses = async (req, res) => {
@@ -107,10 +88,56 @@ const getStudentCourses = async (req, res) => {
   }
 };
 
+// DELETE COURSE (Only School Admin)
+const deleteCourse = async (req, res) => {
+  try {
+    const { courseId } = req.params;
+
+    // 1. Only School Admin can delete
+    if (req.user.role !== "schooladmin") {
+      return res.status(403).json({
+        message: "Only School Admin can delete courses"
+      });
+    }
+
+    // 2. Find the course
+    const course = await Course.findById(courseId);
+    if (!course) {
+      return res.status(404).json({ message: "Course not found" });
+    }
+
+    // 3. Check that this admin owns the school
+    const school = await School.findOne({
+      _id: course.schoolId,
+      createdBy: req.user._id,
+    });
+
+    if (!school) {
+      return res.status(403).json({
+        message: "You are not authorized to delete courses from this school"
+      });
+    }
+
+    // 4. Remove the course from School.courses list
+    school.courses = school.courses.filter(
+      (id) => id.toString() !== courseId
+    );
+    await school.save();
+
+    // 5. Delete the course
+    await Course.findByIdAndDelete(courseId);
+
+    return res.json({ message: "Course deleted successfully" });
+  } catch (err) {
+    console.log(err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+};
+
 module.exports = {
   createCourse,
-  assignTeacher,
+deleteCourse,
   getSchoolCourses,
-  getTeacherCourses,
   getStudentCourses,
+  getTeacherCoursesWithSchool
 };

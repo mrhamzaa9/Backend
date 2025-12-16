@@ -4,6 +4,7 @@ const bcrypt = require('bcrypt');
 const validator = require('validator');
 require("dotenv").config();
 const secretKey = process.env.SECRET_KEY;
+//register
 const register = async (req, res) => {
     try {
         const { name, email, password, role } = req.body
@@ -40,6 +41,7 @@ const register = async (req, res) => {
         return res.status(500).json({ error: "Internal Server Error" });
     }
 };
+//login
 const login = async (req, res) => {
     try {
         const { email, password } = req.body;

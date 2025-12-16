@@ -38,13 +38,22 @@ const schoolSchema = new mongoose.Schema(
     ],
 
     // Join requests from teachers
-    pendingTeachers: [
+   pendingTeachers: [
+  {
+    teacher: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true
+    },
+    courseIds: [
       {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "User",
+        ref: "Course"
       }
-    ],
-
+    ]
+  }
+]
+,
     // All courses in the school
     courses: [
       {
