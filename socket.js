@@ -1,6 +1,6 @@
 const { Server } = require("socket.io");
 
-let io; // will hold the Socket.IO server instance
+
 
 const initSocket = (server) => {
   io = new Server(server, {

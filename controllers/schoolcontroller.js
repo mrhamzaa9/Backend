@@ -1,4 +1,4 @@
-const express = require("express");
+
 const course = require("../models/course");
 const School = require("../models/school");
 const User = require("../models/user");
@@ -152,7 +152,7 @@ const approveTeacher = async (req, res) => {
     school.pendingTeachers.splice(index, 1);
 
     const io = getIO();
- console.log("Emitting to room:", teacherId);
+//  console.log("Emitting to room:", teacherId);
     // ❌ REJECT
     if (approve === false) {
       await school.save();

@@ -4,9 +4,9 @@
   "main": "index.js",
 "scripts": {
   "api-start": "nodemon index.js",
-  "socket-start": "nodemon serversocket.js"
- 
-  },
+  "socket-start": "nodemon serversocket.js",
+  "start": "concurrently \"nodemon index.js\" \"nodemon serversocket.js\""
+},
   "keywords": [],
   "author": "",
   "license": "ISC",

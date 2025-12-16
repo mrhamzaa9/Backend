@@ -42,5 +42,5 @@ app.use("/api/assign", Assignmentapi);
 
 const PORT = process.env.API_PORT || 4000;
 app.listen(PORT, () => {
-  console.log(`API  running on http://localhost:${PORT}`);
+  console.log(`API  running on ${PORT}`);
 });

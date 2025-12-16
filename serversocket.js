@@ -1,15 +1,11 @@
 const http = require("http");
-const { initSocket } = require("./socket"); // your socket.js
-require("dotenv").config();
+const app = require("./index"); 
+const { initSocket } = require("./socket");
 
-const PORT = process.env.SOCKET_PORT || 5000;
+const server = http.createServer(app);
 
-// create a simple HTTP server
-const server = http.createServer(); 
+initSocket(server); // socket attached here
 
-// initialize socket.io on this server
-initSocket(server);
-
-server.listen(PORT, () => {
-  console.log(`Socket.IO running on port ${PORT}`);
+server.listen(5000, () => {
+  console.log("Socket server running on port 5000");
 });
