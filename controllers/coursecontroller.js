@@ -133,9 +133,30 @@ const deleteCourse = async (req, res) => {
     return res.status(500).json({ error: "Internal server error" });
   }
 };
+const getSchoolsWithCourses = async (req, res) => {
+  try {
+    // Fetch all schools
+    const schools = await School.find()
+      .populate({
+        path: "courses", // assuming School schema has courses: [ObjectId]
+        select: "name createdBy teachers", // fields you want
+        populate: {
+          path: "teachers",
+          select: "name email"
+        }
+      });
+
+    return res.json(schools);
+  } catch (err) {
+    console.log(err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+};
+
 
 module.exports = {
   createCourse,
+  getSchoolsWithCourses,
 deleteCourse,
   getSchoolCourses,
   getStudentCourses,

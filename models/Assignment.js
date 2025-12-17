@@ -18,6 +18,11 @@ const assignmentSchema = new mongoose.Schema(
       type: Date,
       required: true,
     },
+  schoolId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "School",
+    required: true,
+  },
 
     courseId: {
       type: mongoose.Schema.Types.ObjectId,

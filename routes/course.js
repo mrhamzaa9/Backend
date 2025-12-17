@@ -16,5 +16,6 @@ router.get("/teacher/coursesWithSchool", Auth, Role("teacher,schooladmin"), Cour
 
 // STUDENT VIEW COURSES
 router.get("/student/:schoolId", Auth, Role("student"), CourseController.getStudentCourses);
-
+// coruse to school
+router.get("/", Auth, Role("teacher"), CourseController.getSchoolsWithCourses);
 module.exports = router;

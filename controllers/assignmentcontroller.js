@@ -8,9 +8,11 @@ const createAssignment = async (req, res) => {
     const { task, description, finalAt, courseId } = req.body;
 
     const course = await Course.findById(courseId);
-    if (!course) return res.status(404).json({ message: "Course not found" });
+    if (!course) {
+      return res.status(404).json({ message: "Course not found" });
+    }
 
-    // only course teacher can create
+    // teacher must belong to this course
     if (!course.teachers.includes(req.user._id)) {
       return res.status(403).json({ message: "Not authorized" });
     }
@@ -20,14 +22,16 @@ const createAssignment = async (req, res) => {
       description,
       finalAt,
       courseId,
+      schoolId: course.schoolId, 
       createdBy: req.user._id,
     });
 
-    return res.status(201).json({ message: "Assignment created", assignment });
+    res.status(201).json({ message: "Assignment created", assignment });
   } catch (err) {
-    return res.status(500).json({ error: "Internal Server Error" });
+    res.status(500).json({ error: "Internal Server Error" });
   }
 };
+
 
 // STUDENT SUBMIT ASSIGNMENT
 const submitAssignment = async (req, res) => {

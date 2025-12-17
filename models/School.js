@@ -22,12 +22,22 @@ const schoolSchema = new mongoose.Schema(
     },
 
     // Teachers approved to teach
-    teachers: [
-      {
+    
+  teachers: [
+    {
+      teacher: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "User",
-      }
-    ],
+      },
+      courseIds: [
+        {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "Course",
+        },
+      ],
+    },
+  ],
+
 
     // Students who selected this school
     students: [

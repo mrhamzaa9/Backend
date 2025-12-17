@@ -23,6 +23,7 @@ router.post("/select", Auth, Role("student"), SchoolController.selectSchool);
 router.get("/", Auth, SchoolController.getSchool);
 // notication get
 router.get("/notify", Auth,SchoolController.getNotifications);
-
+//get approved teacher
+router.get("/teacher-approve",Auth,SchoolController.getApprovedSchools)
 module.exports = router;
 
