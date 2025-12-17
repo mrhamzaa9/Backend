@@ -21,6 +21,8 @@ router.post("/select", Auth, Role("student"), SchoolController.selectSchool);
 
 // Student/Teacher → view all schools
 router.get("/", Auth, SchoolController.getSchool);
+// notication get
+router.get("/notify", Auth,SchoolController.getNotifications);
 
 module.exports = router;
 

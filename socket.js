@@ -1,11 +1,15 @@
 const { Server } = require("socket.io");
 
 
-
+let io
 const initSocket = (server) => {
   io = new Server(server, {
     cors: { origin: "*", credentials: true },
-  });
+  
+  }
+);
+  
+
 
   io.on("connection", (socket) => {
     console.log("Socket connected:", socket.id);
@@ -22,6 +26,7 @@ const initSocket = (server) => {
 
   return io;
 };
+
 
 const getIO = () => {
   if (!io) {
