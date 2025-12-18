@@ -47,9 +47,7 @@ const AddSchool = async (req, res) => {
 const requestToJoinSchool = async (req, res) => {
   try {
     if (req.user.role !== "teacher") {
-      return res
-        .status(403)
-        .json({ message: "Only teachers can send join requests" });
+      return res.status(403).json({ message: "Only teachers can send join requests" });
     }
 
     const { schoolId, courseIds } = req.body;
@@ -57,33 +55,29 @@ const requestToJoinSchool = async (req, res) => {
     const school = await School.findById(schoolId);
     if (!school) return res.status(404).json({ message: "School not found" });
 
-    if (school.teachers.includes(req.user._id)) {
-      return res
-        .status(400)
-        .json({ message: "Already a teacher in this school" });
-    }
-
-    const alreadyRequested = school.pendingTeachers.some(
-      (p) => p.teacher.toString() === req.user._id.toString()
+    // Safely check if teacher is already approved
+    const isAlreadyTeacher = school.teachers.some(
+      (t) => t.teacher && t.teacher.toString() === req.user._id.toString()
     );
-    if (alreadyRequested) {
-      return res
-        .status(400)
-        .json({ message: "Join request already submitted" });
+    if (isAlreadyTeacher) {
+      return res.status(400).json({ message: "Already a teacher in this school" });
     }
 
+    // ✅ Allow multiple pending requests
     school.pendingTeachers.push({
       teacher: req.user._id,
       courseIds: courseIds || [],
     });
 
     await school.save();
-    res.status(200).json({ message: "Join request sent" });
+
+    return res.status(200).json({ message: "Join request sent" });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: err.message });
   }
 };
+
 
 // ================= GET PENDING REQUESTS =================
 const getTeacherRequests = async (req, res) => {
@@ -154,6 +148,7 @@ const approveTeacher = async (req, res) => {
     const io = getIO();
 
     if (approve === false) {
+      // Notify teacher about rejection
       await Notification.create({
         userId: teacherId,
         type: "teacher-request-status",
@@ -174,34 +169,42 @@ const approveTeacher = async (req, res) => {
       return res.json({ message: "Teacher request rejected" });
     }
 
-    // ✅ APPROVE
-    if (approve === true) {
-      school.teachers.push({
-        teacher: teacherId,
-        courseIds: pendingRequest.courseIds || [], // Use courses from the request
-      });
+    // ✅ APPROVE: Only allow courses that are not already assigned
+    const assignedCourses = school.teachers.flatMap(t => t.courseIds.map(c => c.toString()));
+    const requestedCourses = pendingRequest.courseIds.map(c => c.toString());
 
-      await Notification.create({
-        userId: teacherId,
-        type: "teacher-request-status",
-        status: "approved",
-        schoolId,
-        schoolName: school.name,
-        message: `Your request to join ${school.name} was approved`,
+    const overlapping = requestedCourses.filter(c => assignedCourses.includes(c));
+    if (overlapping.length > 0) {
+      return res.status(400).json({
+        message: `Course(s) ${overlapping.join(", ")} already assigned to another teacher`,
       });
-
-      io.to(teacherId.toString()).emit("teacher-request-status", {
-        status: "approved",
-        schoolId,
-        schoolName: school.name,
-        message: `Your request to join ${school.name} was approved`,
-      });
-
-      await school.save();
-      return res.json({ message: "Teacher request approved" });
     }
 
-    return res.status(400).json({ message: "Invalid approve value" });
+    // Assign teacher
+    school.teachers.push({
+      teacher: teacherId,
+      courseIds: pendingRequest.courseIds || [],
+    });
+
+    // Notify teacher about approval
+    await Notification.create({
+      userId: teacherId,
+      type: "teacher-request-status",
+      status: "approved",
+      schoolId,
+      schoolName: school.name,
+      message: `Your request to join ${school.name} was approved`,
+    });
+
+    io.to(teacherId.toString()).emit("teacher-request-status", {
+      status: "approved",
+      schoolId,
+      schoolName: school.name,
+      message: `Your request to join ${school.name} was approved`,
+    });
+
+    await school.save();
+    return res.json({ message: "Teacher request approved" });
   } catch (err) {
     console.log(err);
     res.status(500).json({ message: err.message });
@@ -253,7 +256,7 @@ const getNotifications = async (req, res) => {
   try {
     const notifications = await Notification.find({ userId: req.user._id })
       .sort({ createdAt: -1 }); // newest first
-console.log("req.user._id:", req.user._id);
+    console.log("req.user._id:", req.user._id);
 
     res.json(notifications);
   } catch (err) {
@@ -286,7 +289,7 @@ const getApprovedSchools = async (req, res) => {
         teacherId: teacherId,            // the teacher's user id
         schoolId: school._id,            // school id
         schoolName: school.name,         // school name
-        courseIds: teacherEntry?.courseIds , // courses assigned
+        courseIds: teacherEntry?.courseIds, // courses assigned
       };
     });
 
@@ -296,15 +299,56 @@ const getApprovedSchools = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+// admin get  their own school
+// GET school admin's own school
+const getMySchool = async (req, res) => {
+  try {
+    const school = await School.findOne({ createdBy: req.user.id })
 
+   .populate("students", "name email")
+      .populate("courses", "name");
+
+
+    if (!school) {
+      return res.status(404).json({ message: "No school found" });
+    }
+
+    res.json([school]); // return as array to match frontend
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// ================= MARK NOTIFICATIONS AS READ =================
+const  markNotificationsRead= async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const notification = await Notification.findOneAndUpdate(
+      { _id: id, userId: req.user._id },
+      { $set: { read: true } },
+      { new: true }
+    );
+
+    if (!notification) {
+      return res.status(404).json({ message: "Notification not found" });
+    }
+
+    res.json(notification);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
 
 
 module.exports = {
   AddSchool,
   getSchool,
+   markNotificationsRead,
   getApprovedSchools,
   getTeacherRequests,
   getNotifications,
+  getMySchool,
   selectSchool,
   approveTeacher,
   requestToJoinSchool,

@@ -25,5 +25,8 @@ router.get("/", Auth, SchoolController.getSchool);
 router.get("/notify", Auth,SchoolController.getNotifications);
 //get approved teacher
 router.get("/teacher-approve",Auth,SchoolController.getApprovedSchools)
+// get own school
+router.get("/my-school",Auth,SchoolController.getMySchool)
+router.put("/notifications/read/:id", Auth, SchoolController.markNotificationsRead);
 module.exports = router;
 
