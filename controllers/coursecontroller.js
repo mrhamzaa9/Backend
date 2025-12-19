@@ -75,23 +75,12 @@ const getTeacherCoursesWithSchool = async (req, res) => {
 };
 
 
-// GET COURSES FOR STUDENT (in selected school)
-const getStudentCourses = async (req, res) => {
-  try {
-    const { schoolId } = req.params;
-
-    const courses = await Course.find({ schoolId });
-
-    return res.json(courses);
-  } catch (err) {
-    return res.status(500).json({ error: "Internal server error" });
-  }
-};
 
 // DELETE COURSE (Only School Admin)
 const deleteCourse = async (req, res) => {
   try {
-    const { courseId } = req.params;
+    const  {id } = req.params;
+    console.log(id)
 
     // 1. Only School Admin can delete
     if (req.user.role !== "schooladmin") {
@@ -101,7 +90,7 @@ const deleteCourse = async (req, res) => {
     }
 
     // 2. Find the course
-    const course = await Course.findById(courseId);
+    const course = await Course.findById(id);
     if (!course) {
       return res.status(404).json({ message: "Course not found" });
     }
@@ -120,12 +109,12 @@ const deleteCourse = async (req, res) => {
 
     // 4. Remove the course from School.courses list
     school.courses = school.courses.filter(
-      (id) => id.toString() !== courseId
+      (id) => id.toString() !== id
     );
     await school.save();
 
     // 5. Delete the course
-    await Course.findByIdAndDelete(courseId);
+    await Course.findByIdAndDelete(id);
 
     return res.json({ message: "Course deleted successfully" });
   } catch (err) {
@@ -159,6 +148,6 @@ module.exports = {
   getSchoolsWithCourses,
 deleteCourse,
   getSchoolCourses,
-  getStudentCourses,
+
   getTeacherCoursesWithSchool
 };

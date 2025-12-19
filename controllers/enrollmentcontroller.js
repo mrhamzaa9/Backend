@@ -1,5 +1,6 @@
 const Enrollment = require("../models/enrollment");
 const Course = require("../models/course");
+const school = require("../models/school");
 
 const enrollCourse = async (req, res) => {
   try {
@@ -8,31 +9,37 @@ const enrollCourse = async (req, res) => {
     const course = await Course.findById(courseId);
     if (!course) return res.status(404).json({ message: "Course not found" });
 
+    // Create enrollment
     const enrollment = await Enrollment.create({
       studentId: req.user._id,
       courseId,
+      schoolId: course.schoolId,
+    });
+
+    // Add student to school.students array
+    await school.findByIdAndUpdate(course.schoolId, {
+      $addToSet: { students: req.user._id }
     });
 
     return res.status(201).json({ message: "Enrolled", enrollment });
   } catch (err) {
-    //IN MONGO DB IF YOU CHECK ALREADY HA TU USKO 11000 CODE SA KRATE HAN 
     if (err.code === 11000) {
       return res.status(400).json({ message: "Already enrolled" });
     }
 
-    return res.status(500).json({ error: "Internal Server Error" });
+    return res.status(500).json({ error: err.message });
   }
 };
+
 
 const myCourses = async (req, res) => {
-  try {
-    const enrollments = await Enrollment.find({ studentId: req.user._id })
-      .populate("courseId");
+ 
+const studentId = req.user._id;
 
-    return res.json(enrollments);
-  } catch (err) {
-    return res.status(500).json({ error: "Internal Server Error" });
-  }
-};
+  const enrollments = await Enrollment.find({ studentId }).populate("courseId");
+  const courses = enrollments.map(e => e.courseId);
+
+  res.json({ courses });
+}
 
 module.exports = { enrollCourse, myCourses };

@@ -14,7 +14,10 @@ const enrollmentSchema = new mongoose.Schema(
     enrolledAt: {
       type: Date,
       default: Date.now,
-    }
+    },
+    schoolId: { type: mongoose.Schema.Types.ObjectId,
+       ref: "School", 
+       required: true },
   },
   { timestamps: true }
 );

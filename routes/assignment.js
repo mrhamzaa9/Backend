@@ -12,5 +12,6 @@ router.post("/submit", Auth, Role("student"), Controller.submitAssignment);
 
 // TEACHER GRADE SUBMISSION
 router.post("/grade", Auth, Role("teacher"), Controller.gradeSubmission);
-
+//student assignments
+router.get("/assignments", Auth, Controller.getAssignmentsForStudent);
 module.exports = router;

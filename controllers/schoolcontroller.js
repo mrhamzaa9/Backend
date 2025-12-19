@@ -1,5 +1,5 @@
 const Notification = require("../models/notification");
-const course = require("../models/course");
+const Course = require("../models/course");
 const School = require("../models/school");
 const User = require("../models/user");
 const { getIO } = require("../socket");
@@ -142,8 +142,13 @@ const approveTeacher = async (req, res) => {
 
     const pendingRequest = school.pendingTeachers[index];
 
-    // Remove from pending
-    school.pendingTeachers.splice(index, 1);
+for (const courseId of pendingRequest.courseIds) {
+  await Course.findByIdAndUpdate(courseId, {
+    $addToSet: { teachers: teacherId } // prevents duplicates
+  });
+}
+ 
+
 
     const io = getIO();
 
@@ -220,8 +225,8 @@ const selectSchool = async (req, res) => {
         .status(403)
         .json({ message: "Only students can select a school" });
     }
-
     const { schoolId } = req.body;
+    
 
     const school = await School.findById(schoolId);
     if (!school) return res.status(404).json({ message: "School not found" });
@@ -252,6 +257,7 @@ const getSchool = async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 };
+//=======================notifcation===========
 const getNotifications = async (req, res) => {
   try {
     const notifications = await Notification.find({ userId: req.user._id })
@@ -264,41 +270,50 @@ const getNotifications = async (req, res) => {
     res.status(500).json({ message: "Internal server error" });
   }
 };
+//====================approved=================
 const getApprovedSchools = async (req, res) => {
   try {
     const teacherId = req.user._id;
 
-    // Find schools where this teacher is approved
     const schools = await School.find({
-      "teachers.teacher": teacherId,
-    }).populate("teachers.courseIds", "name");
+      $or: [
+        { "pendingTeachers.teacher": teacherId },
+        { "teachers.teacher": teacherId },
+      ],
+    })
+      .populate("teachers.courseIds", "name")
+      .populate("pendingTeachers.courseIds", "name");
 
-    if (!schools.length) {
-      return res.json({ approved: false, schools: [] });
-    }
+    const response = [];
 
-    // Map to a clean response format
-    const approvedSchools = schools.map((school) => {
-      // Find the teacher entry for this school
-      const teacherEntry = school.teachers.find(
-        (t) => t.teacher && t.teacher.toString() === teacherId.toString()
-      );
-
-      return {
-        _id: teacherEntry?._id,          // teacher document id in school
-        teacherId: teacherId,            // the teacher's user id
-        schoolId: school._id,            // school id
-        schoolName: school.name,         // school name
-        courseIds: teacherEntry?.courseIds, // courses assigned
-      };
+    schools.forEach((school) => {
+      // 🔹 Approved courses
+      school.teachers.forEach((t) => {
+        if (t.teacher.toString() === teacherId.toString()) {
+          response.push({
+            _id: t._id,                     // teacher-school relation id
+            teacherId: teacherId,
+            schoolId: school._id,
+            schoolName: school.name,
+            courseIds: t.courseIds.map((c) => ({
+              _id: c._id,
+              name: c.name,
+            })),
+          });
+        }
+      });
     });
 
-    res.json({ approved: true, schools: approvedSchools });
+    return res.json({
+      approved: response.length > 0,
+      schools: response,
+    });
   } catch (err) {
-    console.log(err);
+    console.error(err);
     res.status(500).json({ message: err.message });
   }
 };
+
 // admin get  their own school
 // GET school admin's own school
 const getMySchool = async (req, res) => {
@@ -344,7 +359,7 @@ const  markNotificationsRead= async (req, res) => {
 module.exports = {
   AddSchool,
   getSchool,
-   markNotificationsRead,
+  markNotificationsRead,
   getApprovedSchools,
   getTeacherRequests,
   getNotifications,
