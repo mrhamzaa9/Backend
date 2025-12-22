@@ -33,18 +33,36 @@ const createAssignment = async (req, res) => {
 // STUDENT SUBMIT ASSIGNMENT
 const submitAssignment = async (req, res) => {
   try {
-    const { assignmentId, fileUrl } = req.body;
+    const { assignmentId } = req.body;
+
+    // 🛑 File validation
+    if (!req.file) {
+      return res.status(400).json({ message: "File required" });
+    }
+
+    // 🛑 Prevent duplicate submission
+    const alreadySubmitted = await Submission.findOne({
+      assignmentId,
+      studentId: req.user._id,
+    });
+
+    if (alreadySubmitted) {
+      return res.status(400).json({ message: "Already submitted" });
+    }
 
     const submission = await Submission.create({
       assignmentId,
       studentId: req.user._id,
-      fileUrl,
+      fileUrl: req.file.path, // Cloudinary URL
     });
 
-    return res.json({ message: "Submitted", submission });
+    res.json({
+      message: "Assignment submitted successfully",
+      submission,
+    });
   } catch (err) {
-    console.log(err);
-    return res.status(500).json({ error: "Internal Server Error" });
+    console.error(err);
+    res.status(500).json({ error: err.message });
   }
 };
 
@@ -99,8 +117,45 @@ const gradeSubmission = async (req, res) => {
 
     return res.json({ message: "Graded", submission });
   } catch (err) {
-    return res.status(500).json({ error: "Internal Server Error" });
+    return res.status(500).json({ error: err.message });
+  }
+};
+const getSubmissionsForTeacher = async (req, res) => {
+  try {
+    const teacherId = req.user._id;
+
+    const submissions = await Submission.find()
+      .populate({
+        path: "assignmentId",
+        match: { createdBy: teacherId }, // ONLY teacher's assignments
+        populate: { path: "courseId", select: "name" },
+      })
+      .populate("studentId", "name email");
+
+    // remove null assignments (not teacher's)
+    const filtered = submissions.filter(s => s.assignmentId);
+
+    res.json({ submissions: filtered });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};// STUDENT VIEW RESULTS (ASSIGNMENTS + GRADES)
+const getStudentResults = async (req, res) => {
+  try {
+    const studentId = req.user._id;
+
+    const submissions = await Submission.find({ studentId })
+      .populate({
+        path: "assignmentId",
+        select: "task description finalAt courseId",
+        populate: { path: "courseId", select: "name" },
+      });
+
+    res.json({ submissions });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 };
 
-module.exports = { createAssignment,getAssignmentsForStudent, submitAssignment, gradeSubmission };
+
+module.exports = { createAssignment,getAssignmentsForStudent, submitAssignment, gradeSubmission,getSubmissionsForTeacher,  getStudentResults  };

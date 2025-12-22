@@ -23,7 +23,7 @@ const submissionSchema = new mongoose.Schema(
     },
 
     grade: {
-      type: Number,
+      type: String,
       default: null
     },
   },

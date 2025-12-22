@@ -2,11 +2,11 @@
   "name": "backend",
   "version": "1.0.0",
   "main": "index.js",
-"scripts": {
-  "api-start": "nodemon index.js",
-  "socket-start": "nodemon serversocket.js",
-  "start": "concurrently \"nodemon index.js\" \"nodemon serversocket.js\""
-},
+  "scripts": {
+    "api-start": "nodemon index.js",
+    "socket-start": "nodemon serversocket.js",
+    "start": "concurrently \"nodemon index.js\" \"nodemon serversocket.js\""
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",
@@ -14,6 +14,7 @@
   "dependencies": {
     "bcrypt": "^6.0.0",
     "body-parser": "^2.2.0",
+    "cloudinary": "^1.41.3",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
@@ -21,10 +22,13 @@
     "jsonwebtoken": "^9.0.2",
     "mongodb": "^7.0.0",
     "mongoose": "^8.20.0",
- 
+    "multer": "^2.0.2",
+    "multer-storage-cloudinary": "^4.0.0",
+    "socket.io": "^4.8.1",
     "validator": "^13.15.23"
   },
   "devDependencies": {
+    "concurrently": "^9.2.1",
     "nodemon": "^3.1.10"
   }
 }
