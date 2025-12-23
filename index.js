@@ -14,7 +14,7 @@ const Schoolapi = require("./routes/school");
 const Courseapi = require("./routes/course");
 const Enrollmentapi = require("./routes/enrollment");
 const Assignmentapi = require("./routes/assignment");
-
+const Quizapi = require("./routes/quiz")
 const app = express();
 
 // middlewares
@@ -39,6 +39,7 @@ app.use("/api/superadmin", Superadminapi);
 app.use("/api/course", Courseapi);
 app.use("/api/enroll", Enrollmentapi);
 app.use("/api/assign", Assignmentapi);
+app .use ("/api/quiz",Quizapi)
 
 const PORT = process.env.API_PORT || 4000;
 app.listen(PORT, () => {
