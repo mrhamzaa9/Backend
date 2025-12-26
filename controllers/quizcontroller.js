@@ -6,7 +6,8 @@ require("dotenv").config();
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY, // Ensure this is in your .env file
 });
-// 1. GET QUESTIONS (Generates via Claude & Saves to DB)
+
+// ================= GET QUIZ QUESTIONS =================
 const getQuizQuestions = async (req, res) => {
   try {
     const { topic = "javascript", difficulty = "medium" } = req.body;
@@ -64,50 +65,77 @@ Format:
 };
 
 
-// 2. SUBMIT QUIZ (Checks against DB)
+// ================= SUBMIT QUIZ =================
 const submitQuiz = async (req, res) => {
   try {
     const { quizId, answers } = req.body;
     const studentId = req.user._id;
-    // A. Fetch the original quiz from DB
+
+    console.log("➡️ Received submission:", JSON.stringify({ quizId, answers }, null, 2));
+
     const quizSession = await GeneratedQuiz.findById(quizId);
     if (!quizSession) {
-      return res.status(404).json({ message: "Quiz session expired or invalid." });
+      console.log("❌ Quiz not found for ID:", quizId);
+      return res.status(404).json({ message: "Quiz not found" });
     }
 
-    // B. Calculate Score
-    let score = 0;
-
-    // Create a map for fast lookup: { "q1": "Answer A", "q2": "Answer B" }
+    // Map correct answers by question ID
     const correctMap = {};
     quizSession.questions.forEach(q => {
-      correctMap[q.id] = q.correctAnswer;
+      // Ensure both correct answer and options are strings
+      correctMap[q.id] = q.correctAnswer?.toString() || "";
     });
 
-    answers.forEach(ans => {
-      if (correctMap[ans.questionId] === ans.selected) {
-        score++;
-      }
+    console.log("✅ Correct answer map:", JSON.stringify(correctMap, null, 2));
+
+    let score = 0;
+    const detailedAnswers = answers.map(ans => {
+      const selectedText = (ans.selected || "").toString();
+      const correct = correctMap[ans.questionId];
+
+      // Compare lowercase trimmed to avoid extra whitespace issues
+      const isCorrect =
+        correct &&
+        selectedText.trim().toLowerCase() === correct.trim().toLowerCase();
+
+      if (isCorrect) score++;
+
+      console.log(
+        `🔹 Question ID: ${ans.questionId}, Selected: "${selectedText}", Correct: "${correct}", isCorrect: ${isCorrect}`
+      );
+
+      return {
+        questionId: ans.questionId,
+        selected: selectedText,
+        correctAnswer: correct,
+        isCorrect
+      };
     });
 
-    // C. Save Result
+    console.log("🏁 Final score:", score);
+    console.log("📋 Detailed answers:", JSON.stringify(detailedAnswers, null, 2));
+
+    // Save result in DB
     const result = await QuizResult.create({
       studentId,
+      quizId,
       score,
       total: quizSession.questions.length,
+      answers: detailedAnswers
     });
 
     res.json({
       success: true,
       correct: score,
       total: quizSession.questions.length,
-      result,
+      result
     });
-
   } catch (err) {
+    console.error("submitQuiz error:", err);
     res.status(500).json({ success: false, message: err.message });
   }
 };
+
 // GET SAVED QUIZ
 const getSavedQuiz = async (req, res) => {
   const { quizId } = req.params;
@@ -135,7 +163,7 @@ const listTeacherQuizzes = async (req, res) => {
     const teacherId = req.user._id; // teacher must be logged in
 
     // Fetch all quizzes created by this teacher
-    const quizzes = await GeneratedQuiz.find({ createdBy: teacherId }).sort({ createdAt: -1 });
+    const quizzes = await GeneratedQuiz.find({ createdBy: teacherId })
 
     // Return only relevant info for the dashboard
     const safeQuizzes = quizzes.map((q) => ({

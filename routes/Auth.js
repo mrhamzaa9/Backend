@@ -5,5 +5,6 @@ const UserController = require("../controllers/authcontroller");
 router.post("/register", UserController.register);
 //login as a user
 router.post("/login", UserController.login);
-
+// Email verification (AUTH route)
+router.get("/verify/:token", UserController.verifyEmail);
 module.exports = router;

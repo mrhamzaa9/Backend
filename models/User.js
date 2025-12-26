@@ -37,6 +37,8 @@ const userSchema = new mongoose.Schema(
         ref: "School",
       }
     ],
+      isVerified: { type: Boolean, default: false }, // new
+  verificationToken: { type: String } // new
   },
   { timestamps: true }
 );
