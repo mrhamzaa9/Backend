@@ -79,7 +79,7 @@ const getAssignmentsForStudent = async (req, res) => {
     const courseIds = enrollments.map(e => e.courseId);
 
     // 2️⃣ Fetch all assignments for those courses
-    const assignments = await Assignment.find({ courseId: { $in: courseIds } }).lean();
+    const assignments = await Assignment.find({ courseId: { $in: courseIds } });
 
     // 3️⃣ Mark submitted assignments
     for (let a of assignments) {
