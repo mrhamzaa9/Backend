@@ -3,7 +3,7 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 const crypto = require("crypto"); // for random token
 const validator = require('validator');
-const sendVerificationEmail = require("../config/mail")
+const {sendVerificationEmail} = require("../config/mail")
 require("dotenv").config();
 const secretKey = process.env.SECRET_KEY;
 
@@ -47,7 +47,7 @@ const register = async (req, res) => {
         });
 
     } catch (error) {
-        res.status(500).json({ error: "Internal Server Error" });
+        res.status(500).json({ error: error.message });
     }
 };
 

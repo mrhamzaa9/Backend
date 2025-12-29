@@ -17,7 +17,7 @@ transporter.verify((err) => {
 });
 
 const sendVerificationEmail = async (user, token) => {
-  const url = `http://localhost:3000/api/auth/verify/${token}`;
+  const url = `http://localhost:4000/api/auth/verify/${token}`;
 
   return transporter.sendMail({
     from: `"Multi-School LMS" <${process.env.EMAIL_USER}>`,
