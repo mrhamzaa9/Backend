@@ -7,4 +7,7 @@ router.post("/register", UserController.register);
 router.post("/login", UserController.login);
 // Email verification (AUTH route)
 router.get("/verify/:token", UserController.verifyEmail);
+//forgt
+router.post("/forgot-password", UserController.forgotPassword);
+router.post("/reset-password/:token",UserController. resetPassword);
 module.exports = router;

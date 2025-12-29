@@ -3,7 +3,7 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 const crypto = require("crypto"); // for random token
 const validator = require('validator');
-const {sendVerificationEmail} = require("../config/mail")
+const {sendVerificationEmail,sendResetPasswordEmail} = require("../config/mail")
 require("dotenv").config();
 const secretKey = process.env.SECRET_KEY;
 
@@ -96,4 +96,64 @@ const verifyEmail = async (req, res) => {
     }
 };
 
-module.exports = { login, register, verifyEmail }
+const resetPassword = async (req, res) => {
+  const { token } = req.params;
+  const { password } = req.body;
+
+  if (!password) {
+    return res.status(400).json({ message: "Password is required" });
+  }
+
+  const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
+
+  const user = await User.findOne({
+    resetPasswordToken: hashedToken,
+    resetPasswordExpire: { $gt: Date.now() },
+  });
+
+  if (!user) return res.status(400).json({ message: "Invalid or expired token" });
+
+  // Compare new password with existing password
+  const isSame = await bcrypt.compare(password, user.password);
+  if (isSame) {
+    return res.status(400).json({ message: "New password cannot be same as old password" });
+  }
+
+  // Hash and save new password
+  user.password = await bcrypt.hash(password, 10);
+  user.resetPasswordToken = undefined;
+  user.resetPasswordExpire = undefined;
+  await user.save();
+
+  res.json({ message: "Password updated successfully. You can now login." });
+};
+
+
+const forgotPassword = async (req, res) => {
+  const { email } = req.body;
+
+  const user = await User.findOne({ email });
+  if (!user) {
+    return res.status(404).json({ message: "User not found" });
+  }
+
+  // create token
+  const token = crypto.randomBytes(32).toString("hex");
+
+  user.resetPasswordToken = crypto
+    .createHash("sha256")
+    .update(token)
+    .digest("hex");
+
+  user.resetPasswordExpire = Date.now() + 15 * 60 * 1000; // 15 min
+
+  await user.save();
+
+  const resetUrl = `http://localhost:5173/reset-password/${token}`;
+
+  await sendResetPasswordEmail(user, resetUrl);
+
+  res.json({ message: "Reset link sent to email" });
+};
+
+module.exports = { login, register, verifyEmail,resetPassword,forgotPassword }

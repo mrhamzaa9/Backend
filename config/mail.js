@@ -17,7 +17,7 @@ transporter.verify((err) => {
 });
 
 const sendVerificationEmail = async (user, token) => {
-  const url = `http://localhost:4000/api/auth/verify/${token}`;
+  const url = `http://localhost:5173/verify/${token}`;
 
   return transporter.sendMail({
     from: `"Multi-School LMS" <${process.env.EMAIL_USER}>`,
@@ -31,5 +31,19 @@ const sendVerificationEmail = async (user, token) => {
     `
   });
 };
+// forget password 
+const sendResetPasswordEmail = async (user, url) => {
+  await transporter.sendMail({
+     from: `"Multi-School LMS" <${process.env.EMAIL_USER}>`,
+    to: user.email,
+    subject: "Password Reset",
+    html: `
+      <h3>Hello ${user.name}</h3>
+      <p>Click below to reset your password</p>
+      <a href="${url}">Reset Password</a>
+      <p>This link expires in 15 minutes</p>
+    `,
+  });
+};
 
-module.exports = { sendVerificationEmail };
+module.exports = { sendVerificationEmail,sendResetPasswordEmail };

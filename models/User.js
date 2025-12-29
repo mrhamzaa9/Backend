@@ -29,7 +29,12 @@ const userSchema = new mongoose.Schema(
       enum: ["superadmin", "schooladmin", "teacher", "student"],
       required: true,
     },
-
+  resetPasswordToken:{
+    type:String
+  } ,
+  resetPasswordExpire:{
+    type:Date
+  } ,
     // IMPORTANT: teacher/student can join many schools
     schools: [
       {
@@ -38,7 +43,8 @@ const userSchema = new mongoose.Schema(
       }
     ],
       isVerified: { type: Boolean, default: false }, // new
-  verificationToken: { type: String } // new
+  verificationToken: { type: String }, // new
+  
   },
   { timestamps: true }
 );
