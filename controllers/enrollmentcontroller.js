@@ -1,6 +1,7 @@
 const Enrollment = require("../models/enrollment");
 const Course = require("../models/course");
 const school = require("../models/school");
+const User = require("../models/user")
 
 const enrollCourse = async (req, res) => {
   try {
@@ -30,6 +31,24 @@ const enrollCourse = async (req, res) => {
     return res.status(500).json({ error: err.message });
   }
 };
+const getMyStudentState = async (req, res) => {
+  try {
+    // selected schools (from User)
+    const user = await User.findById(req.user._id).select("schools");
+
+    // enrolled courses (from Enrollment)
+    const enrollments = await Enrollment.find({
+      studentId: req.user._id,
+    }).select("courseId");
+
+    res.json({
+      selectedSchools: user?.schools || [],
+      enrolledCourses: enrollments.map(e => e.courseId),
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
 
 
 const myCourses = async (req, res) => {
@@ -42,4 +61,4 @@ const studentId = req.user._id;
   res.json({ courses });
 }
 
-module.exports = { enrollCourse, myCourses };
+module.exports = { enrollCourse, myCourses ,getMyStudentState};

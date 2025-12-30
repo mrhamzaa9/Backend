@@ -34,6 +34,14 @@ const createAssignment = async (req, res) => {
 const submitAssignment = async (req, res) => {
   try {
     const { assignmentId } = req.body;
+    const file = req.file;
+    console.log("Uploaded file:", file);
+    console.log("BODY:", req.body);
+    console.log("FILE:", req.file);
+
+    if (!req.body.assignmentId) {
+  return res.status(400).json({ message: "Assignment ID required" });
+}
 
     // 🛑 File validation
     if (!req.file) {

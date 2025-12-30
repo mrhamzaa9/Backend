@@ -1,125 +1,227 @@
-
-const Anthropic = require("@anthropic-ai/sdk");
-const GeneratedQuiz = require("../models/GeneratedQuiz");
+const Anthropic = require('@anthropic-ai/sdk');
 const QuizResult = require("../models/quiz");
+const Enrollment = require("../models/enrollment")
+const GeneratedQuiz = require("../models/GeneratedQuiz");
 require("dotenv").config();
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+// Initialize Anthropic
+const anthropic = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY,
+});
 
-// Generate or fetch quiz
 const getQuizQuestions = async (req, res) => {
   try {
-    const { quizId, topic = "javascript", difficulty = "medium" } = req.body;
+    const { topic = "javascript", difficulty = "medium" } = req.body;
 
-    let quiz;
+    // A. Ask Claude to generate the quiz
+    const response = await anthropic.messages.create({
+      model: process.env.CLAUDE_MODEL,
+      max_tokens: 400,
+      temperature: 0.2,
+      system: "Return ONLY valid JSON. No text. No markdown.",
+      messages: [
+        {
+          role: "user",
+          content: `Generate 3 ${difficulty} MCQ about ${topic}.
+Format:
+[{id, question, options[4], correctAnswer}]`
+        }
+      ]
+    });
 
-    if (quizId) {
-      quiz = await GeneratedQuiz.findById(quizId);
-      if (!quiz) return res.status(404).json({ message: "Quiz not found" });
-    } else {
-      // Generate new quiz via AI
-      const response = await anthropic.messages.create({
-        model: process.env.CLAUDE_MODEL,
-        max_tokens: 400,
-        temperature: 0.2,
-        system: "Return ONLY valid JSON. No text. No markdown.",
-        messages: [
-          {
-            role: "user",
-            content: `Generate 3 ${difficulty} MCQ about ${topic}.
-Format: [{id, question, options[4], correctAnswer}]`
-          }
-        ]
-      });
-
-      let questionsData;
-      try {
-        questionsData = JSON.parse(response.content[0].text);
-      } catch (e) {
-        throw new Error("Failed to parse AI response: " + e.message);
-      }
-
-      quiz = await GeneratedQuiz.create({
-        createdBy: req.user._id,
-        topic,
-        difficulty,
-        questions: questionsData
-      });
+    // B. Parse the response
+    let questionsData;
+    try {
+      questionsData = JSON.parse(response.content[0].text);
+    } catch (e) {
+      throw new Error("Failed to parse AI response: " + e.message);
     }
 
-    const safeQuestions = quiz.questions.map(q => ({
+    // C. Save the FULL quiz (with answers) to MongoDB
+    const newQuizSession = await GeneratedQuiz.create({
+      createdBy: req.user._id, // required
+      topic,                    // required
+      difficulty,
+      questions: questionsData
+    });
+
+    // D. Sanitize for Frontend (Remove correct answers!)
+    const safeQuestions = questionsData.map(q => ({
       id: q.id,
       question: q.question,
       options: q.options
     }));
 
-    res.json({ success: true, quizId: quiz._id, questions: safeQuestions });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    // E. Send Questions + The Quiz Session ID
+    res.json({
+      success: true,
+      quizId: newQuizSession._id, // Frontend must send this back when submitting!
+      questions: safeQuestions
+    });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
-// Submit quiz
+
+// ================= SUBMIT QUIZ =================
 const submitQuiz = async (req, res) => {
   try {
     const { quizId, answers } = req.body;
     const studentId = req.user._id;
 
-    const quiz = await GeneratedQuiz.findById(quizId);
-    if (!quiz) return res.status(404).json({ message: "Quiz not found" });
+    console.log("➡️ Received submission:", JSON.stringify({ quizId, answers }, null, 2));
+
+    const quizSession = await GeneratedQuiz.findById(quizId);
+    if (!quizSession) {
+      console.log("❌ Quiz not found for ID:", quizId);
+      return res.status(404).json({ message: "Quiz not found" });
+    }
+
+    // Map correct answers by question ID
+    const correctMap = {};
+    quizSession.questions.forEach(q => {
+      // Ensure both correct answer and options are strings
+      correctMap[q.id] = q.correctAnswer?.toString() || "";
+    });
+
+    console.log("✅ Correct answer map:", JSON.stringify(correctMap, null, 2));
 
     let score = 0;
     const detailedAnswers = answers.map(ans => {
-      const correct = quiz.questions.find(q => q.id === ans.questionId)?.correctAnswer || "";
-      const isCorrect = correct.trim().toLowerCase() === (ans.selected || "").trim().toLowerCase();
+      const selectedText = (ans.selected || "").toString();
+      const correct = correctMap[ans.questionId];
+
+      // Compare lowercase trimmed to avoid extra whitespace issues
+      const isCorrect =
+        correct &&
+        selectedText.trim().toLowerCase() === correct.trim().toLowerCase();
+
       if (isCorrect) score++;
-      return { questionId: ans.questionId, selected: ans.selected, correctAnswer: correct, isCorrect };
+
+      console.log(
+        `🔹 Question ID: ${ans.questionId}, Selected: "${selectedText}", Correct: "${correct}", isCorrect: ${isCorrect}`
+      );
+
+      return {
+        questionId: ans.questionId,
+        selected: selectedText,
+        correctAnswer: correct,
+        isCorrect
+      };
     });
 
+    console.log("🏁 Final score:", score);
+    console.log("📋 Detailed answers:", JSON.stringify(detailedAnswers, null, 2));
+
+    // Save result in DB
     const result = await QuizResult.create({
       studentId,
       quizId,
       score,
-      total: quiz.questions.length,
+      total: quizSession.questions.length,
       answers: detailedAnswers
     });
 
-    res.json({ success: true, correct: score, total: quiz.questions.length, result });
+    res.json({
+      success: true,
+      correct: score,
+      total: quizSession.questions.length,
+      result
+    });
   } catch (err) {
+    console.error("submitQuiz error:", err);
     res.status(500).json({ success: false, message: err.message });
   }
 };
 
-// Teacher: list own quizzes
+// ================= GET SAVED QUIZ =================
+const getSavedQuiz = async (req, res) => {
+  const { quizId } = req.params;
+  const quiz = await GeneratedQuiz.findById(quizId);
+  if (!quiz) return res.status(404).json({ message: "Quiz not found" });
+
+  const safeQuestions = quiz.questions.map(q => ({
+    id: q.id,
+    question: q.question,
+    options: q.options,
+  }));
+
+  res.json({
+    success: true,
+    quizId,
+    questions: safeQuestions,
+  });
+};
+
+// ================= LIST TEACHER QUIZZES =================
 const listTeacherQuizzes = async (req, res) => {
   try {
-    const quizzes = await GeneratedQuiz.find({ createdBy: req.user._id }).sort({ createdAt: -1 });
+    const teacherId = req.user._id;
+
+    const quizzes = await GeneratedQuiz.find({ createdBy: teacherId }).sort({ createdAt: -1 });
+
     const safeQuizzes = quizzes.map(q => ({
       _id: q._id,
-      topic: q.topic,
-      difficulty: q.difficulty,
-      totalQuestions: q.questions.length
+      topic: q.topic || "N/A",
+      difficulty: q.difficulty || "medium",
+      isActive: q.isActive,
+      createdAt: q.createdAt,
+      totalQuestions: q.questions.length,
     }));
+
     res.json(safeQuizzes);
+
   } catch (err) {
+    console.error(err);
     res.status(500).json({ success: false, message: err.message });
   }
 };
 
-// Student: list all quizzes
-const listStudentQuizzes = async (req, res) => {
+// ================= LIST AVAILABLE QUIZZES FOR STUDENT =================
+const listAvailableQuizzes = async (req, res) => {
   try {
-    const quizzes = await GeneratedQuiz.find({}).sort({ createdAt: -1 });
+    const studentId = req.user._id;
+
+    // 1️⃣ Get enrolled courses from Enrollment collection
+    const enrollments = await Enrollment.find({ studentId })
+      .select("courseId");
+
+    if (!enrollments.length) {
+      return res.json([]);
+    }
+
+    const enrolledCourseIds = enrollments.map(e => e.courseId);
+
+    // 2️⃣ Get quizzes for those courses
+    const quizzes = await GeneratedQuiz.find({
+      isActive: true,
+      courseId: { $in: enrolledCourseIds },
+    }).sort({ createdAt: -1 });
+
+    // 3️⃣ Safe response
     const safeQuizzes = quizzes.map(q => ({
       _id: q._id,
-      topic: q.topic,
-      difficulty: q.difficulty,
-      totalQuestions: q.questions.length
+      topic: q.topic || "N/A",
+      difficulty: q.difficulty || "medium",
+      totalQuestions: q.questions.length,
     }));
+
     res.json(safeQuizzes);
+
   } catch (err) {
+    console.error(err);
     res.status(500).json({ success: false, message: err.message });
   }
 };
 
-module.exports = { getQuizQuestions, submitQuiz, listTeacherQuizzes, listStudentQuizzes };
+
+module.exports = {
+  getQuizQuestions,
+  submitQuiz,
+  getSavedQuiz,
+  listTeacherQuizzes,
+  listAvailableQuizzes
+};

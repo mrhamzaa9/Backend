@@ -8,4 +8,5 @@ router.post("/", Auth, Role("student"), Controller.enrollCourse);
 //student check coures
 router.get("/my-course", Auth, Role("student"), Controller.myCourses);
 
+router.get("/me", Auth, Role("student"), Controller.getMyStudentState);
 module.exports = router;

@@ -66,9 +66,9 @@ const login = async (req, res) => {
         if (!match) {
             return res.status(401).json({ message: "WRONG PASSWORD" })
         }
-        if (!user.isVerified) {
-            return res.status(401).json({ message: "Please verify your email before logging in." });
-        }
+        // if (!user.isVerified) {
+        //     return res.status(401).json({ message: "Please verify your email before logging in." });
+        // }
 
         //  assign token
         const token = jwt.sign({ id: user._id, role: user.role, email: user.email }, secretKey, { expiresIn: "24h" });
@@ -155,5 +155,23 @@ const forgotPassword = async (req, res) => {
 
   res.json({ message: "Reset link sent to email" });
 };
+// LOGOUT
+const logout = async (req, res) => {
+  try {
+    res.clearCookie("token", {
+      httpOnly: true,
+      sameSite: "strict",
+      secure: process.env.NODE_ENV === "production",
+    });
 
-module.exports = { login, register, verifyEmail,resetPassword,forgotPassword }
+    return res.status(200).json({
+      message: "Logged out successfully",
+    });
+  } catch (error) {
+    return res.status(500).json({
+      error: "Logout failed",
+    });
+  }
+};
+
+module.exports = { login, register, verifyEmail,resetPassword,forgotPassword, logout }

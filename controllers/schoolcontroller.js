@@ -253,6 +253,7 @@ const getSchool = async (req, res) => {
   try {
     const school = await School.find().populate("courses", "name");
     res.status(200).json(school);
+
   } catch (error) {
     res.status(500).json({ error: "Internal Server Error" });
   }
