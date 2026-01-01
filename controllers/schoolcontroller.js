@@ -126,34 +126,37 @@ const cancelOwnRequest = async (req, res) => {
 
 // ================= APPROVE / REJECT =================
 
-
 const approveTeacher = async (req, res) => {
   try {
-    const { schoolId, teacherId, approve } = req.body;
+    const { schoolId, requestId, approve } = req.body;
+
+    if (!schoolId || !requestId) {
+      return res.status(400).json({
+        message: "schoolId and requestId are required",
+      });
+    }
 
     const school = await School.findById(schoolId);
-    if (!school) return res.status(404).json({ message: "School not found" });
+    if (!school) {
+      return res.status(404).json({ message: "School not found" });
+    }
 
+    // ✅ find pending request by requestId
     const index = school.pendingTeachers.findIndex(
-      (p) => p.teacher.toString() === teacherId.toString()
+      (p) => String(p._id) === String(requestId)
     );
 
-    if (index === -1) return res.status(400).json({ message: "Pending request not found" });
+    if (index === -1) {
+      return res.status(400).json({ message: "Pending request not found" });
+    }
 
     const pendingRequest = school.pendingTeachers[index];
-
-for (const courseId of pendingRequest.courseIds) {
-  await Course.findByIdAndUpdate(courseId, {
-    $addToSet: { teachers: teacherId } // prevents duplicates
-  });
-}
- 
-
+    const teacherId = pendingRequest.teacher;
 
     const io = getIO();
 
+    // ❌ REJECT
     if (approve === false) {
-      // Notify teacher about rejection
       await Notification.create({
         userId: teacherId,
         type: "teacher-request-status",
@@ -163,35 +166,54 @@ for (const courseId of pendingRequest.courseIds) {
         message: `Your request to join ${school.name} was rejected`,
       });
 
-      io.to(teacherId.toString()).emit("teacher-request-status", {
+      io.to(String(teacherId)).emit("teacher-request-status", {
         status: "rejected",
         schoolId,
         schoolName: school.name,
         message: `Your request to join ${school.name} was rejected`,
       });
 
+      // ✅ remove pending request
+      school.pendingTeachers.splice(index, 1);
       await school.save();
+
       return res.json({ message: "Teacher request rejected" });
     }
 
-    // ✅ APPROVE: Only allow courses that are not already assigned
-    const assignedCourses = school.teachers.flatMap(t => t.courseIds.map(c => c.toString()));
-    const requestedCourses = pendingRequest.courseIds.map(c => c.toString());
+    // ✅ APPROVE
 
-    const overlapping = requestedCourses.filter(c => assignedCourses.includes(c));
-    if (overlapping.length > 0) {
-      return res.status(400).json({
-        message: `Course(s) ${overlapping.join(", ")} already assigned to another teacher`,
+    // assign courses to course.teachers
+    for (const courseId of pendingRequest.courseIds || []) {
+      await Course.findByIdAndUpdate(courseId, {
+        $addToSet: { teachers: teacherId },
       });
     }
 
-    // Assign teacher
+    // prevent course overlap
+    const assignedCourses = school.teachers.flatMap((t) =>
+      (t.courseIds || []).map((c) => String(c))
+    );
+
+    const requestedCourses = (pendingRequest.courseIds || []).map((c) =>
+      String(c)
+    );
+
+    const overlapping = requestedCourses.filter((c) =>
+      assignedCourses.includes(c)
+    );
+
+    if (overlapping.length > 0) {
+      return res.status(400).json({
+        message: "One or more courses already assigned",
+      });
+    }
+
+    // assign teacher to school
     school.teachers.push({
       teacher: teacherId,
       courseIds: pendingRequest.courseIds || [],
     });
 
-    // Notify teacher about approval
     await Notification.create({
       userId: teacherId,
       type: "teacher-request-status",
@@ -201,20 +223,24 @@ for (const courseId of pendingRequest.courseIds) {
       message: `Your request to join ${school.name} was approved`,
     });
 
-    io.to(teacherId.toString()).emit("teacher-request-status", {
+    io.to(String(teacherId)).emit("teacher-request-status", {
       status: "approved",
       schoolId,
       schoolName: school.name,
       message: `Your request to join ${school.name} was approved`,
     });
 
+    // ✅ remove pending request
+    school.pendingTeachers.splice(index, 1);
+
     await school.save();
     return res.json({ message: "Teacher request approved" });
   } catch (err) {
-    console.log(err);
+    console.error(err);
     res.status(500).json({ message: err.message });
   }
 };
+
 
 
 // ================= SELECT SCHOOL =================
