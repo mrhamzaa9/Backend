@@ -15,12 +15,17 @@ router.get('/superadmin', authMiddleware, async (req, res) => {
 });
 
 // School Admin
-router.get('/schooladmin', authMiddleware, async (req, res) => {
+router.get("/schooladmin", authMiddleware, async (req, res) => {
   try {
-    const data = await getDashboardData({ role: 'schooladmin', schoolId: req.user.schoolId });
+    const data = await getDashboardData({
+      role: req.user.role,
+      userId: req.user._id,
+      schoolId: req.user.schoolId, 
+    });
+
     res.json(data);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(400).json({ error: err.message });
   }
 });
 

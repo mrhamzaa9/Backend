@@ -7,6 +7,7 @@ const { getIO } = require("../socket");
 // ================= ADD SCHOOL =================
 const AddSchool = async (req, res) => {
   try {
+
     const { name, address } = req.body;
 
     if (!name || !address) {
@@ -30,9 +31,9 @@ const AddSchool = async (req, res) => {
       courses: [],
     });
 
-    req.user.schools.push(school._id);
+  const user = req.user;
+    user.schools.push(school._id);  // push school ID
     await school.save();
-
     res.status(201).json({
       message: "School registered successfully",
       school,

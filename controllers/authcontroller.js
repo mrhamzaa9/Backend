@@ -9,47 +9,73 @@ const secretKey = process.env.SECRET_KEY;
 
 
 const register = async (req, res) => {
-    try {
-        const { name, email, password, role } = req.body;
-        if (!name || !email || !password || !role) {
-            return res.status(400).json({ error: "All fields are required" });
-        }
+  try {
+    const { name, email, password, role, school } = req.body; // include optional school info
 
-        const normalizedEmail = email.trim().toLowerCase();
-        if (!validator.isEmail(normalizedEmail) || !normalizedEmail.endsWith("@gmail.com")) {
-            return res.status(400).json({ error: "Email must be a valid Gmail address" });
-        }
-
-        const existingUser = await User.findOne({ email: normalizedEmail });
-        if (existingUser) return res.status(400).json({ error: "User already exists" });
-
-        const hashedPassword = await bcrypt.hash(password, 10);
-
-        // generate verification token
-        const verificationToken = crypto.randomBytes(32).toString("hex");
-
-        const user = new User({
-            name,
-            email: normalizedEmail,
-            password: hashedPassword,
-            role: role.trim(),
-            verificationToken
-        });
-
-        await user.save();
-
-        // send verification email
-        await sendVerificationEmail(user, verificationToken);
-
-        res.status(201).json({
-            message: "User registered successfully. Please check your email to verify account.",
-            userId: user._id
-        });
-
-    } catch (error) {
-        res.status(500).json({ error: error.message });
+    if (!name || !email || !password || !role) {
+      return res.status(400).json({ error: "All fields are required" });
     }
+
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!validator.isEmail(normalizedEmail) || !normalizedEmail.endsWith("@gmail.com")) {
+      return res.status(400).json({ error: "Email must be a valid Gmail address" });
+    }
+
+    const existingUser = await User.findOne({ email: normalizedEmail });
+    if (existingUser) return res.status(400).json({ error: "User already exists" });
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const verificationToken = crypto.randomBytes(32).toString("hex");
+
+    // Create user
+    const user = new User({
+      name,
+      email: normalizedEmail,
+      password: hashedPassword,
+      role: role.trim(),
+      verificationToken
+    });
+
+    // If schooladmin and school data is provided
+    if (role.trim().toLowerCase() === "schooladmin" && school) {
+      if (!school.name || !school.address) {
+        return res.status(400).json({ error: "School name and address are required for School Admin" });
+      }
+
+      const newSchool = new School({
+        name: school.name,
+        address: school.address,
+        createdBy: user._id,
+        teachers: [],
+        students: [],
+        courses: [],
+        pendingTeachers: []
+      });
+
+      await newSchool.save();
+
+      // Link school to user
+      user.schools.push(newSchool._id);
+    }
+
+    await user.save();
+
+    // Send verification email
+    await sendVerificationEmail(user, verificationToken);
+
+    res.status(201).json({
+      message: "User registered successfully. Please check your email to verify account.",
+      userId: user._id,
+      ...(user.role === "schooladmin" && user.schools.length ? { schoolId: user.schools[0] } : {})
+    });
+
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ error: error.message });
+  }
 };
+
 
 //login
 const login = async (req, res) => {
