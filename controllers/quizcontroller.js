@@ -11,7 +11,7 @@ const anthropic = new Anthropic({
 
 const getQuizQuestions = async (req, res) => {
   try {
-    const { topic = "javascript", difficulty = "medium" } = req.body;
+    const { topic = "javascript", difficulty = "medium", courseId } = req.body;
 
     // A. Ask Claude to generate the quiz
     const response = await anthropic.messages.create({
@@ -42,6 +42,7 @@ Format:
       createdBy: req.user._id, // required
       topic,                    // required
       difficulty,
+      courseId, // required
       questions: questionsData
     });
 
@@ -185,37 +186,38 @@ const listAvailableQuizzes = async (req, res) => {
   try {
     const studentId = req.user._id;
 
-    // 1️⃣ Get enrolled courses from Enrollment collection
-    const enrollments = await Enrollment.find({ studentId })
-      .select("courseId");
+    // 1️⃣ Get enrolled courses
+    const enrollments = await Enrollment.find({ studentId }).select("courseId");
+    const enrolledCourseIds = enrollments.map(e => e.courseId);
 
-    if (!enrollments.length) {
+    if (!enrolledCourseIds.length) {
       return res.json([]);
     }
 
-    const enrolledCourseIds = enrollments.map(e => e.courseId);
-
-    // 2️⃣ Get quizzes for those courses
+    // 2️⃣ Fetch quizzes for those courses
     const quizzes = await GeneratedQuiz.find({
-      isActive: true,
       courseId: { $in: enrolledCourseIds },
-    }).sort({ createdAt: -1 });
+      isActive: true
+    })
+      .select("topic difficulty courseId questions createdAt")
+      .sort({ createdAt: -1 });
 
-    // 3️⃣ Safe response
-    const safeQuizzes = quizzes.map(q => ({
+    // Format for frontend
+    const formatted = quizzes.map(q => ({
       _id: q._id,
-      topic: q.topic || "N/A",
-      difficulty: q.difficulty || "medium",
+      topic: q.topic,
+      difficulty: q.difficulty,
       totalQuestions: q.questions.length,
+      createdAt: q.createdAt
     }));
 
-    res.json(safeQuizzes);
-
+    res.json(formatted);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ success: false, message: err.message });
+    res.status(500).json({ message: err.message });
   }
 };
+
 
 
 module.exports = {

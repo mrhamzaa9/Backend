@@ -1,7 +1,7 @@
 const Notification = require("../models/notification");
 const Course = require("../models/course");
 const School = require("../models/school");
-const User = require("../models/user");
+
 const { getIO } = require("../socket");
 
 // ================= ADD SCHOOL =================
