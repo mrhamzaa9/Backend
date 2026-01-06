@@ -72,6 +72,15 @@ const submitQuiz = async (req, res) => {
   try {
     const { quizId, answers } = req.body;
     const studentId = req.user._id;
+    
+    // 🔹 Check if this student already submitted this quiz
+    const existing = await QuizResult.findOne({ quizId, studentId });
+    if (existing) {
+      return res.status(400).json({
+        success: false,
+        message: "You have already submitted this quiz."
+      });
+    }
 
     console.log("➡️ Received submission:", JSON.stringify({ quizId, answers }, null, 2));
 
@@ -83,10 +92,11 @@ const submitQuiz = async (req, res) => {
 
     // Map correct answers by question ID
     const correctMap = {};
-    quizSession.questions.forEach(q => {
-      // Ensure both correct answer and options are strings
-      correctMap[q.id] = q.correctAnswer?.toString() || "";
-    });
+  quizSession.questions.forEach(q => {
+  const index = Number(q.correctAnswer);
+  correctMap[q.id] = q.options[index]; // 🔥 index → text
+});
+
 
     console.log("✅ Correct answer map:", JSON.stringify(correctMap, null, 2));
 

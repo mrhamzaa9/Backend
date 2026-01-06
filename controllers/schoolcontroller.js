@@ -53,31 +53,75 @@ const requestToJoinSchool = async (req, res) => {
 
     const { schoolId, courseIds } = req.body;
 
+    if (!schoolId || !courseIds || courseIds.length === 0) {
+      return res.status(400).json({ message: "School and course required" });
+    }
+
     const school = await School.findById(schoolId);
     if (!school) return res.status(404).json({ message: "School not found" });
 
-    // Safely check if teacher is already approved
+    // ❌ Already teacher in this school
     const isAlreadyTeacher = school.teachers.some(
-      (t) => t.teacher && t.teacher.toString() === req.user._id.toString()
+      (t) => String(t.teacher) === String(req.user._id)
     );
     if (isAlreadyTeacher) {
       return res.status(400).json({ message: "Already a teacher in this school" });
     }
 
-    // ✅ Allow multiple pending requests
+    // 🔒 BLOCK if course already has teacher
+    for (const courseId of courseIds) {
+      const course = await Course.findById(courseId);
+
+      if (!course) {
+        return res.status(404).json({ message: "teacher avaible of this course" });
+      }
+
+      if (course.teachers.length > 0) {
+        return res.status(400).json({
+          message: `Course "${course.name}" already has a teacher assigned`,
+        });
+      }
+    }
+
+    // ❌ Duplicate pending request
+    const alreadyPending = school.pendingTeachers.some(
+      (p) => String(p.teacher) === String(req.user._id)
+    );
+    if (alreadyPending) {
+      return res.status(400).json({ message: "Request already sent" });
+    }
+        // 🔥 SOCKET NOTIFY ADMIN
+    const io = getIO();
+
+    io.to(String(school.createdBy)).emit("teacher-request", {
+      type: "teacher-request",
+      schoolId: school._id,
+      schoolName: school.name,
+      teacherId: req.user._id,
+      message: `New teacher request received from ${req.user.name}`,
+    });
+
+    // optional: save notification in DB
+    await Notification.create({
+      userId: school.createdBy,
+      type: "teacher-request",
+      schoolId: school._id,
+      schoolName: school.name,
+      message: `New teacher request received from ${req.user.name}`,
+    });
+    // ✅ Save request
     school.pendingTeachers.push({
       teacher: req.user._id,
-      courseIds: courseIds || [],
+      courseIds,
     });
 
     await school.save();
 
-    return res.status(200).json({ message: "Join request sent" });
+    res.json({ message: "Join request sent" });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: err.message });
-  }
-};
+  }}
 
 
 // ================= GET PENDING REQUESTS =================

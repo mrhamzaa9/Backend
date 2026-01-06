@@ -2,30 +2,57 @@ const Assignment = require("../models/assignment");
 const Submission = require("../models/submission");
 const Course = require("../models/course");
 const Enrollment = require("../models/enrollment"); // assuming you have an enrollment model
+const { getIO } = require("../socket");
+const Notification = require("../models/notification");
 // TEACHER CREATE ASSIGNMENT
 const createAssignment = async (req, res) => {
   try {
     const { task, description, finalAt, courseId } = req.body;
 
     const course = await Course.findById(courseId);
-    if (!course) {
-      return res.status(404).json({ message: "Course not found" });
-    }
-
-
+    if (!course) return res.status(404).json({ message: "Course not found" });
 
     const assignment = await Assignment.create({
       task,
       description,
       finalAt,
       courseId,
-      schoolId: course.schoolId, 
+      schoolId: course.schoolId,
       createdBy: req.user._id,
     });
 
+    // 🔥 NOTIFY STUDENTS
+    const io = getIO();
+
+    // 1️⃣ Get enrolled students
+    const enrollments = await Enrollment.find({ courseId }).select("studentId");
+    const studentIds = enrollments.map(e => e.studentId.toString());
+
+    for (const studentId of studentIds) {
+      // socket emit
+      io.to(studentId).emit("new-assignment", {
+        type: "new-assignment",
+        assignmentId: assignment._id,
+        courseId: course._id,
+        task: assignment.task,
+        message: `New assignment "${assignment.task}" posted for ${course.name}`,
+      });
+
+      // DB notification
+      await Notification.create({
+        userId: studentId,
+        type: "new-assignment",
+        status: "pending",
+        schoolId: course.schoolId,
+        schoolName: course.name,
+        message: `New assignment "${assignment.task}" posted for ${course.name}`,
+      });
+    }
+
     res.status(201).json({ message: "Assignment created", assignment });
   } catch (err) {
-    res.status(500).json({ error: "Internal Server Error" });
+    console.error(err);
+    res.status(500).json({ error: "Internal server error" });
   }
 };
 
@@ -34,18 +61,21 @@ const createAssignment = async (req, res) => {
 const submitAssignment = async (req, res) => {
   try {
     const { assignmentId } = req.body;
-    const file = req.file;
-    console.log("Uploaded file:", file);
-    console.log("BODY:", req.body);
-    console.log("FILE:", req.file);
 
-    if (!req.body.assignmentId) {
-  return res.status(400).json({ message: "Assignment ID required" });
-}
+    if (!assignmentId) {
+      return res.status(400).json({ message: "Assignment ID required" });
+    }
 
-    // 🛑 File validation
     if (!req.file) {
       return res.status(400).json({ message: "File required" });
+    }
+
+    // ✅ FETCH ASSIGNMENT (THIS FIXES ERROR)
+    const assignment = await Assignment.findById(assignmentId)
+      .populate("courseId", "name");
+
+    if (!assignment) {
+      return res.status(404).json({ message: "Assignment not found" });
     }
 
     // 🛑 Prevent duplicate submission
@@ -58,10 +88,32 @@ const submitAssignment = async (req, res) => {
       return res.status(400).json({ message: "Already submitted" });
     }
 
+    // ✅ Save submission
     const submission = await Submission.create({
       assignmentId,
       studentId: req.user._id,
-      fileUrl: req.file.path, // Cloudinary URL
+      fileUrl: req.file.path,
+    });
+
+    // 🔥 NOTIFY TEACHER
+    const io = getIO();
+
+    io.to(String(assignment.createdBy)).emit("assignment-submitted", {
+      type: "assignment-submitted",
+      submissionId: submission._id,
+      assignmentId: assignment._id,
+      studentId: req.user._id,
+      message: `Student ${req.user.name} submitted "${assignment.task}"`,
+    });
+
+    // 💾 DB notification
+    await Notification.create({
+      userId: assignment.createdBy,
+      type: "assignment-submitted",
+      status: "pending",
+      schoolId: assignment.schoolId,
+      schoolName: assignment.courseId?.name,
+      message: `Student ${req.user.name} submitted "${assignment.task}"`,
     });
 
     res.json({
@@ -73,7 +125,6 @@ const submitAssignment = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
-
 
 
 // FETCH ASSIGNMENTS FOR STUDENT

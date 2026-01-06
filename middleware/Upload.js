@@ -15,7 +15,7 @@ const storage = new CloudinaryStorage({
   params: {
     folder: "user_uploads",
     resource_type: "auto", // pdf, docx, image
-    allowed_formats: ["pdf", "doc", "docx", "png", "jpg"],
+    allowed_formats: ["pdf", "doc", "docx", "png", "jpg" ,"zip", "rar"],
   },
 });
 

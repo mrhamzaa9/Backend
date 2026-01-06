@@ -3,44 +3,71 @@ const School = require("../models/school");
 const User = require("../models/user");
 
 // CREATE COURSE ( SchoolAdmin)
+
 const createCourse = async (req, res) => {
   try {
-    const { name } = req.body;
+    let { name } = req.body;
 
-    if (!name) {
+    // 1️⃣ Validate input
+    if (!name || !name.trim()) {
       return res.status(400).json({ message: "Course name is required" });
     }
 
-    // Only School Admin can create course
+    name = name.trim(); // remove extra spaces
+
+    // 2️⃣ Role validation
     if (req.user.role !== "schooladmin") {
-      return res.status(403).json({ message: "Only School Admin can create courses" });
+      return res.status(403).json({
+        message: "Only School Admin can create courses"
+      });
     }
 
-    // Find school where this admin is the owner
+    // 3️⃣ Find school for this admin
     const school = await School.findOne({ createdBy: req.user._id });
 
     if (!school) {
-      return res.status(404).json({ message: "School not found for this admin" });
+      return res.status(404).json({
+        message: "School not found for this admin"
+      });
     }
 
-    // Create course
+    // 4️⃣ Case-insensitive duplicate check (same school)
+    const existingCourse = await Course.findOne({
+      schoolId: school._id,
+      name: { $regex: `^${name}$`, $options: "i" }
+    });
+
+    if (existingCourse) {
+      return res.status(400).json({
+        message: "Course with this name already exists in your school"
+      });
+    }
+
+    // 5️⃣ Create course
     const course = await Course.create({
       name,
       schoolId: school._id,
       createdBy: req.user._id,
-      teachers: [],
+      teachers: []
     });
 
-    // Push course to school
+    // 6️⃣ Push course to school
     school.courses.push(course._id);
     await school.save();
 
-    return res.status(201).json({ message: "Course created", course });
+    return res.status(201).json({
+      message: "Course created successfully",
+      course
+    });
+
   } catch (err) {
-    console.log(err);
-    return res.status(500).json({ error: "Internal server error" });
+    console.error("Create course error:", err);
+    return res.status(500).json({
+      error: err.message 
+    });
   }
 };
+
 
 
 
