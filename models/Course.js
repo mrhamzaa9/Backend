@@ -8,6 +8,13 @@ const courseSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
+    price: {
+      type: Number,
+      required: true,
+      default: 20,
+      min: 0,
+    },
+
 
     schoolId: {
       type: mongoose.Schema.Types.ObjectId,

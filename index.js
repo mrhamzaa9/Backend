@@ -16,6 +16,7 @@ const Enrollmentapi = require("./routes/enrollment");
 const Assignmentapi = require("./routes/assignment");
 const Quizapi = require("./routes/quiz")
 const Chart = require("./routes/chart")
+const Stripeapi = require ("./config/stripe")
 const app = express();
 
 // middlewares
@@ -42,6 +43,7 @@ app.use("/api/enroll", Enrollmentapi);
 app.use("/api/assign", Assignmentapi);
 app.use("/api/chart",Chart)
 app .use ("/api/quiz",Quizapi)
+app.use("/api/stripe",Stripeapi)
 
 const PORT = process.env.API_PORT || 4000;
 app.listen(PORT, () => {

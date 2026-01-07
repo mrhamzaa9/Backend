@@ -6,11 +6,14 @@ const User = require("../models/user");
 
 const createCourse = async (req, res) => {
   try {
-    let { name } = req.body;
+    let { name, price } = req.body;
 
     // 1️⃣ Validate input
     if (!name || !name.trim()) {
       return res.status(400).json({ message: "Course name is required" });
+    }
+    if (price == null || price === 0) {
+      return res.status(400).json({ message: "free course" });
     }
 
     name = name.trim(); // remove extra spaces
@@ -46,6 +49,7 @@ const createCourse = async (req, res) => {
     // 5️⃣ Create course
     const course = await Course.create({
       name,
+      price,
       schoolId: school._id,
       createdBy: req.user._id,
       teachers: []

@@ -4,6 +4,7 @@ const Course = require("../models/course");
 const Enrollment = require("../models/enrollment"); // assuming you have an enrollment model
 const { getIO } = require("../socket");
 const Notification = require("../models/notification");
+const {sendMail} = require("../config/mail");
 // TEACHER CREATE ASSIGNMENT
 const createAssignment = async (req, res) => {
   try {
@@ -21,16 +22,27 @@ const createAssignment = async (req, res) => {
       createdBy: req.user._id,
     });
 
-    // 🔥 NOTIFY STUDENTS
     const io = getIO();
 
-    // 1️⃣ Get enrolled students
-    const enrollments = await Enrollment.find({ courseId }).select("studentId");
-    const studentIds = enrollments.map(e => e.studentId.toString());
+    // ✅ Get enrolled students with populated user
+    const enrollments = await Enrollment.find({ courseId }).populate({
+      path: "studentId",
+      select: "name email",
+    });
 
-    for (const studentId of studentIds) {
-      // socket emit
-      io.to(studentId).emit("new-assignment", {
+    for (const enroll of enrollments) {
+      const student = enroll.studentId;
+
+      // 🔐 SAFETY CHECK (THIS FIXES YOUR ERROR)
+      if (!student || !student._id) {
+        console.log("Skipping enrollment with missing student:", enroll._id);
+        continue;
+      }
+
+      const studentSocketId = student._id.toString();
+
+      // 📡 SOCKET NOTIFICATION
+      io.to(studentSocketId).emit("new-assignment", {
         type: "new-assignment",
         assignmentId: assignment._id,
         courseId: course._id,
@@ -38,21 +50,35 @@ const createAssignment = async (req, res) => {
         message: `New assignment "${assignment.task}" posted for ${course.name}`,
       });
 
-      // DB notification
+      // 💾 DB NOTIFICATION
       await Notification.create({
-        userId: studentId,
+        userId: student._id,
         type: "new-assignment",
         status: "pending",
         schoolId: course.schoolId,
         schoolName: course.name,
         message: `New assignment "${assignment.task}" posted for ${course.name}`,
       });
+
+      // 📧 EMAIL (NODEMAILER)
+      if (student.email) {
+        await sendMail({
+          email: student.email,
+          name: student.name,
+          courseName: course.name,
+          task: assignment.task,
+          finalAt: assignment.finalAt,
+        });
+      }
     }
 
-    res.status(201).json({ message: "Assignment created", assignment });
+    res.status(201).json({
+      message: "Assignment created",
+      assignment,
+    });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Internal server error" });
+    res.status(500).json({ error: err.message });
   }
 };
 
