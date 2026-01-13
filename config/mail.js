@@ -70,12 +70,35 @@ const sendMail = async ({ email, name, courseName, task, finalAt }) => {
       <br/>
       <p>— Multi-School LMS</p>
     `,
-  });
-};
+  })}
+
+  // video lecture mail
+  const sendLectureMail = async ({ email, name, courseName, title, videoUrl }) => { 
+    return transporter.sendMail({
+      from: `"Multi-School LMS" <${process.env.EMAIL_USER}>`,
+      to: email,
+      subject: `New Lecture: ${title}`,
+      html: `
+        <h3>Hello ${name}</h3>
+        <p>A new lecture has been posted.</p>
+
+        <p>
+          <b>Course:</b> ${courseName}<br/>
+          <b>Lecture:</b> ${title}<br/>
+          <b>Video:</b> <a href="${videoUrl}">Watch Video</a>
+        </p>
+
+        <p>Please login to LMS to view details.</p>
+        <br/>
+        <p>— Multi-School LMS</p>
+      `,
+    });
+  }
 
 // ================= EXPORTS =================
 module.exports = {
   sendVerificationEmail,
   sendResetPasswordEmail,
   sendMail,
-};
+  sendLectureMail
+}

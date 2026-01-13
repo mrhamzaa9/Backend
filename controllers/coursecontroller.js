@@ -12,9 +12,6 @@ const createCourse = async (req, res) => {
     if (!name || !name.trim()) {
       return res.status(400).json({ message: "Course name is required" });
     }
-    if (price == null || price === 0) {
-      return res.status(400).json({ message: "free course" });
-    }
 
     name = name.trim(); // remove extra spaces
 
@@ -46,10 +43,10 @@ const createCourse = async (req, res) => {
       });
     }
 
-    // 5️⃣ Create course
+    // 5️⃣ Create course (allow free course)
     const course = await Course.create({
       name,
-      price,
+      price: price || 0, // set 0 if not provided
       schoolId: school._id,
       createdBy: req.user._id,
       teachers: []
@@ -66,11 +63,10 @@ const createCourse = async (req, res) => {
 
   } catch (err) {
     console.error("Create course error:", err);
-    return res.status(500).json({
-      error: err.message 
-    });
+    return res.status(500).json({ error: err.message });
   }
 };
+
 
 
 

@@ -322,13 +322,13 @@ const selectSchool = async (req, res) => {
 // ================= GET ALL SCHOOLS =================
 const getSchool = async (req, res) => {
   try {
-    const school = await School.find().populate("courses", "name");
+    const school = await School.find().populate("courses", "name price"); // include price
     res.status(200).json(school);
-
   } catch (error) {
     res.status(500).json({ error: "Internal Server Error" });
   }
 };
+
 //=======================notifcation===========
 const getNotifications = async (req, res) => {
   try {

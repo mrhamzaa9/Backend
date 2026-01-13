@@ -4,7 +4,7 @@ const Controller = require("../controllers/assignmentcontroller");
 const Auth = require("../middleware/Auth");
 const Role = require("../middleware/Role");
 const upload = require("../middleware/Upload")
-
+const Controll = require("../controllers/lecturecontroller");
 // TEACHER CREATE ASSIGNMENT
 router.post("/create", Auth, Role("teacher"), Controller.createAssignment);
 
@@ -22,5 +22,6 @@ router.post("/grade", Auth, Role("teacher"), Controller.gradeSubmission);
 router.get("/assignments", Auth, Controller.getAssignmentsForStudent);
 //teacher get assignments
 router.get("/", Auth, Controller.getSubmissionsForTeacher);
-
+// teacher create upload lecture
+router.post("/lecture", Auth, upload.single("video"),Role("teacher"), Controll.createLecture);
 module.exports = router;
